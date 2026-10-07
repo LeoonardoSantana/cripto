@@ -669,6 +669,18 @@
       startPolling();
     });
 
+    let wakeLock = null;
+    async function keepAwake() {
+      if (wakeLock || document.visibilityState !== 'visible') return;
+      try {
+        wakeLock = await navigator.wakeLock.request('screen');
+        wakeLock.addEventListener('release', () => (wakeLock = null));
+      } catch {}
+    }
+    document.addEventListener('visibilitychange', keepAwake);
+    document.addEventListener('pointerdown', keepAwake);
+    keepAwake();
+
     $('alert-count').textContent = alerts.length;
     renderAlertList();
     reloadAll().then(startPolling);
