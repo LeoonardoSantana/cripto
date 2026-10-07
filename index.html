@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Cripto" />
+  <meta name="theme-color" content="#0b0e14" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <title>Bitcoin & Ethereum · USD</title>
+  <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --card: #131722;
+      --border: #222838;
+      --text: #e6e9ef;
+      --muted: #8a93a6;
+      --up: #26a69a;
+      --down: #ef5350;
+      --btc: #f7931a;
+      --eth: #8c8cff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: clamp(12px, 3vw, 32px);
+      padding-top: max(clamp(12px, 3vw, 32px), env(safe-area-inset-top));
+      padding-left: max(clamp(12px, 3vw, 32px), env(safe-area-inset-left));
+      padding-right: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right));
+      padding-bottom: max(clamp(12px, 3vw, 32px), env(safe-area-inset-bottom));
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-size: clamp(1.8rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    h1 span { color: var(--muted); font-weight: 400; font-size: 0.5em; display: block; margin-top: 6px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; }
+    .control { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--muted); }
+    select {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: clamp(14px, 2.5vw, 24px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 8px; }
+    .coin { display: flex; align-items: center; gap: 12px; }
+    .coin-icon {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 1.3rem; color: #fff;
+    }
+    .coin h2 { font-size: clamp(1.4rem, 3.5vw, 2rem); font-weight: 800; }
+    .coin small { color: var(--muted); font-size: 0.85rem; }
+    .price-box { text-align: right; }
+    .price {
+      font-size: clamp(1.6rem, 4.5vw, 2.4rem);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.3s;
+    }
+    .change { font-size: 0.95rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .up { color: var(--up); }
+    .down { color: var(--down); }
+    .stats { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; color: var(--muted); }
+    .stats b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .chart { width: 100%; height: clamp(260px, 40vh, 420px); }
+    footer { margin-top: 20px; font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--up); animation: pulse 1.5s infinite; }
+    .dot.error { background: var(--down); animation: none; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .flash-up { color: var(--up) !important; }
+    .flash-down { color: var(--down) !important; }
+    .btn {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn.primary { background: #2962ff; border-color: #2962ff; }
+    .btn svg { width: 16px; height: 16px; }
+    .control .btn { height: 100%; }
+    .badge { background: #2962ff; border-radius: 999px; padding: 0 7px; font-size: 0.75rem; font-weight: 700; }
+    dialog {
+      margin: auto;
+      width: min(92vw, 440px);
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+    .dlg-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .dlg-head h3 { font-size: 1.3rem; }
+    .alert-form { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; margin-bottom: 8px; }
+    .alert-form input {
+      min-width: 0;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 1rem;
+    }
+    .alert-form .repeat { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
+    .tag { font-size: 0.7rem; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; margin-left: 4px; }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-bottom: 16px; min-height: 1em; }
+    .alert-list { list-style: none; display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; }
+    .alert-list li {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .alert-list .empty { color: var(--muted); justify-content: center; }
+    .alert-list button { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
+    .notif-row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.8rem; color: var(--muted); }
+    #toasts {
+      position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+      display: flex; flex-direction: column; gap: 8px; z-index: 10; width: min(92vw, 420px);
+    }
+    .toast {
+      background: #1e2433; border: 1px solid #2962ff; border-radius: 12px; padding: 14px 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); cursor: pointer; animation: slide 0.3s ease-out;
+    }
+    .toast b { display: block; font-size: 1.05rem; margin-bottom: 2px; }
+    .toast small { color: var(--muted); }
+    .toast { position: relative; overflow: hidden; }
+    .toast .secs { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+    .toast-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: #2962ff; transition: width 0.1s linear; }
+    @keyframes slide { from { transform: translateY(-20px); opacity: 0; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Bitcoin & Ethereum<span>Precio en dólares (USD) en tiempo real</span></h1>
+    <div class="controls">
+      <label class="control">Estilo
+        <select id="style">
+          <option value="candles">Velas</option>
+          <option value="area">Área</option>
+          <option value="line">Línea</option>
+          <option value="bars">Barras OHLC</option>
+          <option value="baseline">Línea base</option>
+        </select>
+      </label>
+      <label class="control">Temporalidad
+        <select id="timeframe">
+          <option value="1m">1 minuto</option>
+          <option value="5m">5 minutos</option>
+          <option value="15m">15 minutos</option>
+          <option value="1h">1 hora</option>
+          <option value="1d">1 día</option>
+        </select>
+      </label>
+      <label class="control">Actualizar cada
+        <select id="refresh">
+          <option value="1000">1 segundo</option>
+          <option value="5000">5 segundos</option>
+        </select>
+      </label>
+      <div class="control">Alertas
+        <button class="btn" id="open-alerts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span class="badge" id="alert-count">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <dialog id="alerts-dialog">
+    <div class="dlg-head">
+      <h3>Alertas de precio</h3>
+      <button class="btn" id="close-alerts">Cerrar</button>
+    </div>
+    <form class="alert-form" id="alert-form">
+      <select id="alert-coin">
+        <option value="BTCUSDT">Bitcoin (BTC)</option>
+        <option value="ETHUSDT">Ethereum (ETH)</option>
+      </select>
+      <input id="alert-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Precio en USD" required />
+      <button class="btn primary" type="submit">Añadir</button>
+      <label class="repeat"><input type="checkbox" id="alert-repeat" /> Repetir cada vez que llegue a ese precio</label>
+    </form>
+    <p class="hint" id="alert-hint"></p>
+    <ul class="alert-list" id="alert-list"></ul>
+    <div class="notif-row" id="notif-row"></div>
+  </dialog>
+
+  <div id="toasts"></div>
+
+  <main class="grid" id="grid"></main>
+
+  <footer><div class="dot" id="dot"></div><span id="status">Conectando…</span></footer>
+
+  <template id="card-tpl">
+    <section class="card">
+      <div class="card-head">
+        <div class="coin">
+          <div class="coin-icon"></div>
+          <div><h2></h2><small></small></div>
+        </div>
+        <div class="price-box">
+          <div class="price">—</div>
+          <div class="change">—</div>
+        </div>
+      </div>
+      <div class="stats">
+        <span>Máx 24h: <b class="high">—</b></span>
+        <span>Mín 24h: <b class="low">—</b></span>
+        <span>Vol 24h: <b class="vol">—</b></span>
+      </div>
+      <div class="chart"></div>
+    </section>
+  </template>
+
+  <script>
+    const API_BASES = ['https://data-api.binance.vision', 'https://api.binance.com', 'https://api.binance.us'];
+    const STEP = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '1d': 86400 };
+    const TZ = -new Date().getTimezoneOffset() * 60;
+    const COINS = [
+      { symbol: 'BTCUSDT', name: 'Bitcoin', ticker: 'BTC / USD', icon: '₿', color: '#f7931a' },
+      { symbol: 'ETHUSDT', name: 'Ethereum', ticker: 'ETH / USD', icon: 'Ξ', color: '#8c8cff' },
+    ];
+
+    const $ = (id) => document.getElementById(id);
+    const usd = (v, d = 2) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const compact = (v) => '$' + Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(v);
+
+    const state = {
+      style: localStorage.getItem('style') || 'candles',
+      timeframe: localStorage.getItem('timeframe') || '1m',
+      refresh: Number(localStorage.getItem('refresh') || 1000),
+      base: null,
+      timer: null,
+    };
+    $('style').value = state.style;
+    $('timeframe').value = state.timeframe;
+    $('refresh').value = state.refresh;
+
+    async function api(path) {
+      const bases = state.base ? [state.base, ...API_BASES.filter((b) => b !== state.base)] : API_BASES;
+      for (const base of bases) {
+        try {
+          const res = await fetch(base + path);
+          if (!res.ok) continue;
+          state.base = base;
+          return await res.json();
+        } catch {}
+      }
+      throw new Error('No se pudo conectar con la API');
+    }
+
+    function chartOptions() {
+      return {
+        autoSize: true,
+        layout: { background: { color: 'transparent' }, textColor: '#8a93a6', fontSize: 12 },
+        grid: { vertLines: { color: '#1c2130' }, horzLines: { color: '#1c2130' } },
+        rightPriceScale: { borderColor: '#222838' },
+        timeScale: { borderColor: '#222838', timeVisible: true, secondsVisible: false },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        localization: { priceFormatter: (p) => usd(p) },
+      };
+    }
+
+    function createSeries(coin) {
+      const { chart } = coin;
+      const up = '#26a69a', down = '#ef5350';
+      switch (state.style) {
+        case 'area':
+          return chart.addAreaSeries({ lineColor: coin.color, topColor: coin.color + '66', bottomColor: coin.color + '05', lineWidth: 2 });
+        case 'line':
+          return chart.addLineSeries({ color: coin.color, lineWidth: 2 });
+        case 'bars':
+          return chart.addBarSeries({ upColor: up, downColor: down });
+        case 'baseline': {
+          const first = coin.candles[0]?.open ?? 0;
+          return chart.addBaselineSeries({
+            baseValue: { type: 'price', price: first },
+            topLineColor: up, topFillColor1: up + '55', topFillColor2: up + '05',
+            bottomLineColor: down, bottomFillColor1: down + '05', bottomFillColor2: down + '55',
+          });
+        }
+        default:
+          return chart.addCandlestickSeries({ upColor: up, downColor: down, borderVisible: false, wickUpColor: up, wickDownColor: down });
+      }
+    }
+
+    const isOHLC = () => state.style === 'candles' || state.style === 'bars';
+    const toPoint = (c) => (isOHLC() ? c : { time: c.time, value: c.close });
+
+    function renderSeries(coin) {
+      if (coin.series) coin.chart.removeSeries(coin.series);
+      coin.series = createSeries(coin);
+      coin.series.setData(coin.candles.map(toPoint));
+      coin.chart.timeScale().fitContent();
+      coin.alertLines = [];
+      drawAlertLines(coin);
+    }
+
+    async function loadHistory(coin) {
+      const data = await api(`/api/v3/klines?symbol=${coin.symbol}&interval=${state.timeframe}&limit=300`);
+      coin.candles = data.map((k) => ({
+        time: k[0] / 1000 + TZ,
+        open: +k[1], high: +k[2], low: +k[3], close: +k[4],
+      }));
+      renderSeries(coin);
+    }
+
+    function pushPrice(coin, price) {
+      const step = STEP[state.timeframe];
+      const time = Math.floor(Date.now() / 1000 / step) * step + TZ;
+      const last = coin.candles[coin.candles.length - 1];
+      let candle;
+      if (last && last.time === time) {
+        candle = last;
+        candle.close = price;
+        candle.high = Math.max(candle.high, price);
+        candle.low = Math.min(candle.low, price);
+      } else if (!last || time > last.time) {
+        candle = { time, open: price, high: price, low: price, close: price };
+        coin.candles.push(candle);
+      } else return;
+      coin.series.update(toPoint(candle));
+    }
+
+    function updateCard(coin, t) {
+      const price = +t.lastPrice;
+      const change = +t.priceChangePercent;
+      const priceEl = coin.el.querySelector('.price');
+      if (coin.lastPrice != null && price !== coin.lastPrice) {
+        const cls = price > coin.lastPrice ? 'flash-up' : 'flash-down';
+        priceEl.classList.remove('flash-up', 'flash-down');
+        priceEl.classList.add(cls);
+        setTimeout(() => priceEl.classList.remove(cls), 600);
+      }
+      coin.lastPrice = price;
+      priceEl.textContent = usd(price);
+      const changeEl = coin.el.querySelector('.change');
+      changeEl.textContent = `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}% (${usd(t.priceChange)}) 24h`;
+      changeEl.className = 'change ' + (change >= 0 ? 'up' : 'down');
+      coin.el.querySelector('.high').textContent = usd(t.highPrice);
+      coin.el.querySelector('.low').textContent = usd(t.lowPrice);
+      coin.el.querySelector('.vol').textContent = compact(t.quoteVolume);
+      pushPrice(coin, price);
+      checkAlerts(coin, price);
+    }
+
+    // ---------- Alertas ----------
+    const coinBy = (symbol) => COINS.find((c) => c.symbol === symbol);
+    const short = (symbol) => symbol.replace('USDT', '');
+    const parsePrice = (str) => parseFloat(String(str).replace(/[^\d.]/g, ''));
+    const hasSW = 'serviceWorker' in navigator;
+    const notifSupported = 'Notification' in window && window.isSecureContext;
+    const COOLDOWN = 60 * 1000;
+    const AUTO_CLOSE = 15 * 1000;
+    let audioCtx;
+    let alerts = JSON.parse(localStorage.getItem('alerts') || '[]').map((a) => ({
+      repeat: false,
+      side: a.dir === 'above' ? -1 : a.dir === 'below' ? 1 : 0,
+      ...a,
+    }));
+    $('alert-coin').value = localStorage.getItem('alertCoin') || 'BTCUSDT';
+
+    if (hasSW) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+    function persistAlerts() {
+      localStorage.setItem('alerts', JSON.stringify(alerts));
+    }
+
+    function saveAlerts() {
+      persistAlerts();
+      $('alert-count').textContent = alerts.length;
+      renderAlertList();
+      COINS.forEach(drawAlertLines);
+    }
+
+    function drawAlertLines(coin) {
+      if (!coin.series) return;
+      (coin.alertLines || []).forEach((l) => coin.series.removePriceLine(l));
+      coin.alertLines = alerts
+        .filter((a) => a.symbol === coin.symbol)
+        .map((a) => coin.series.createPriceLine({
+          price: a.price,
+          color: '#2962ff',
+          lineWidth: 1,
+          lineStyle: LightweightCharts.LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'Alerta',
+        }));
+    }
+
+    function distance(coin, target) {
+      if (coin.lastPrice == null) return '';
+      const diff = target - coin.lastPrice;
+      const sign = diff >= 0 ? '+' : '-';
+      return `${sign}${usd(Math.abs(diff))} (${sign}${Math.abs((diff / coin.lastPrice) * 100).toFixed(2)}%)`;
+    }
+
+    function renderAlertList() {
+      const list = $('alert-list');
+      list.innerHTML = '';
+      if (!alerts.length) {
+        list.innerHTML = '<li class="empty">No tienes alertas</li>';
+        return;
+      }
+      alerts.forEach((a) => {
+        const li = document.createElement('li');
+        const coin = coinBy(a.symbol);
+        li.innerHTML = `<span><b>${short(a.symbol)}</b> llega a <b>${usd(a.price)}</b>${a.repeat ? '<span class="tag">Repetir</span>' : ''}<br><small style="color:var(--muted)">${distance(coin, a.price)}</small></span>`;
+        const del = document.createElement('button');
+        del.textContent = '×';
+        del.title = 'Eliminar';
+        del.onclick = () => { alerts = alerts.filter((x) => x.id !== a.id); saveAlerts(); };
+        li.appendChild(del);
+        list.appendChild(li);
+      });
+    }
+
+    function renderNotifRow() {
+      const row = $('notif-row');
+      row.innerHTML = '';
+      const testBtn = document.createElement('button');
+      testBtn.className = 'btn';
+      testBtn.type = 'button';
+      testBtn.textContent = 'Probar aviso';
+      testBtn.onclick = async () => {
+        unlockAudio();
+        await askPermission();
+        notify('Prueba de alerta', 'Así se verán tus alertas de precio', 'test');
+      };
+      if (!notifSupported) {
+        row.append(testBtn, window.isSecureContext
+          ? 'Este navegador no permite notificaciones; se avisará con sonido y aviso en pantalla. En iPad, ábrela desde el icono de la pantalla de inicio.'
+          : 'Las notificaciones solo funcionan por HTTPS o en http://localhost. Aquí solo habrá sonido y aviso en pantalla.');
+      } else if (Notification.permission === 'denied') {
+        row.append(testBtn, 'Notificaciones bloqueadas: actívalas en los ajustes del navegador para este sitio (y en Ajustes del Sistema › Notificaciones en Mac).');
+      } else if (Notification.permission === 'granted') {
+        row.append(testBtn, 'Notificaciones activadas.');
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        btn.type = 'button';
+        btn.textContent = 'Activar notificaciones';
+        btn.onclick = async () => { await askPermission(); renderNotifRow(); };
+        row.append(btn, testBtn);
+      }
+    }
+
+    async function askPermission() {
+      if (notifSupported && Notification.permission === 'default') await Notification.requestPermission();
+    }
+
+    function updateHint() {
+      const coin = coinBy($('alert-coin').value);
+      const target = parsePrice($('alert-price').value);
+      if (coin.lastPrice == null) return ($('alert-hint').textContent = 'Cargando precio…');
+      $('alert-price').placeholder = `Ej. ${coin.lastPrice.toFixed(2)}`;
+      let text = `Precio actual de ${coin.name}: ${usd(coin.lastPrice)}`;
+      if (target > 0) text += ` · avisará cuando llegue a ${usd(target)}, ${distance(coin, target)}`;
+      $('alert-hint').textContent = text;
+    }
+
+    function unlockAudio() {
+      audioCtx ??= new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function beep() {
+      if (!audioCtx) return;
+      [0, 0.25, 0.5].forEach((t) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.25, audioCtx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + t + 0.2);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + t);
+        osc.stop(audioCtx.currentTime + t + 0.2);
+      });
+    }
+
+    function toast(title, body) {
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.innerHTML = `<b>${title}</b><span>${body}</span><br><small>Se cierra en <span class="secs"></span> s · toca para cerrar ya</small><div class="toast-bar"></div>`;
+      const secs = el.querySelector('.secs');
+      const bar = el.querySelector('.toast-bar');
+      const end = Date.now() + AUTO_CLOSE;
+      const update = () => {
+        const left = Math.max(0, end - Date.now());
+        secs.textContent = Math.ceil(left / 1000);
+        bar.style.width = `${(left / AUTO_CLOSE) * 100}%`;
+        if (!left) close();
+      };
+      const timer = setInterval(update, 100);
+      const close = () => { clearInterval(timer); el.remove(); };
+      el.onclick = close;
+      $('toasts').appendChild(el);
+      update();
+    }
+
+    async function notify(title, body, tag) {
+      toast(title, body);
+      beep();
+      if (!notifSupported || Notification.permission !== 'granted') return;
+      const opts = { body, tag: `alert-${tag}`, icon: 'icons/icon-192.png' };
+      try {
+        if (!hasSW) throw new Error();
+        const reg = await Promise.race([navigator.serviceWorker.ready, new Promise((_, rej) => setTimeout(rej, 1500))]);
+        await reg.showNotification(title, opts);
+        setTimeout(async () => (await reg.getNotifications({ tag: opts.tag })).forEach((n) => n.close()), AUTO_CLOSE);
+      } catch {
+        const n = new Notification(title, opts);
+        setTimeout(() => n.close(), AUTO_CLOSE);
+      }
+    }
+
+    function checkAlerts(coin, price) {
+      let changed = false;
+      const now = Date.now();
+      alerts.filter((a) => a.symbol === coin.symbol).forEach((a) => {
+        const side = Math.sign(price - a.price);
+        const reached = side === 0 || (a.side !== 0 && side !== a.side);
+        if (side !== a.side) { a.side = side; changed = true; }
+        if (!reached || (a.last && now - a.last < COOLDOWN)) return;
+        a.last = now;
+        a.done = !a.repeat;
+        changed = true;
+        notify(`${coin.name} llegó a ${usd(a.price)}`, `Precio actual: ${usd(price)}`, a.id);
+      });
+      if (!changed) return;
+      if (alerts.some((a) => a.done)) {
+        alerts = alerts.filter((a) => !a.done);
+        saveAlerts();
+      } else persistAlerts();
+      if ($('alerts-dialog').open) renderAlertList();
+    }
+
+    $('open-alerts').addEventListener('click', () => {
+      unlockAudio();
+      renderNotifRow();
+      renderAlertList();
+      updateHint();
+      $('alerts-dialog').showModal();
+    });
+    $('close-alerts').addEventListener('click', () => $('alerts-dialog').close());
+    $('alert-coin').addEventListener('change', () => {
+      localStorage.setItem('alertCoin', $('alert-coin').value);
+      updateHint();
+    });
+    $('alert-price').addEventListener('input', updateHint);
+    $('alert-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      unlockAudio();
+      const symbol = $('alert-coin').value;
+      const price = parsePrice($('alert-price').value);
+      const current = coinBy(symbol).lastPrice;
+      if (!(price > 0) || current == null) return;
+      alerts.push({ id: Date.now(), symbol, price, repeat: $('alert-repeat').checked, side: Math.sign(current - price) });
+      $('alert-price').value = '';
+      updateHint();
+      saveAlerts();
+      await askPermission();
+      renderNotifRow();
+      checkAlerts(coinBy(symbol), current);
+    });
+    document.addEventListener('pointerdown', unlockAudio, { once: true });
+
+    function setStatus(ok, msg) {
+      $('dot').classList.toggle('error', !ok);
+      $('status').textContent = msg;
+    }
+
+    async function tick() {
+      try {
+        const symbols = encodeURIComponent(JSON.stringify(COINS.map((c) => c.symbol)));
+        const data = await api(`/api/v3/ticker/24hr?symbols=${symbols}`);
+        data.forEach((t) => {
+          const coin = COINS.find((c) => c.symbol === t.symbol);
+          if (coin) updateCard(coin, t);
+        });
+        setStatus(true, `En vivo · actualizado ${new Date().toLocaleTimeString()} · cada ${state.refresh / 1000}s`);
+      } catch (e) {
+        setStatus(false, e.message + ' · reintentando…');
+      }
+    }
+
+    function startPolling() {
+      clearInterval(state.timer);
+      tick();
+      state.timer = setInterval(tick, state.refresh);
+    }
+
+    async function reloadAll() {
+      try {
+        await Promise.all(COINS.map(loadHistory));
+      } catch (e) {
+        setStatus(false, e.message);
+      }
+    }
+
+    COINS.forEach((coin) => {
+      const node = $('card-tpl').content.cloneNode(true);
+      coin.el = node.querySelector('.card');
+      const icon = node.querySelector('.coin-icon');
+      icon.textContent = coin.icon;
+      icon.style.background = coin.color;
+      node.querySelector('h2').textContent = coin.name;
+      node.querySelector('small').textContent = coin.ticker;
+      $('grid').appendChild(node);
+      coin.chart = LightweightCharts.createChart(coin.el.querySelector('.chart'), chartOptions());
+      coin.candles = [];
+    });
+
+    $('style').addEventListener('change', (e) => {
+      state.style = e.target.value;
+      localStorage.setItem('style', state.style);
+      COINS.forEach(renderSeries);
+    });
+    $('timeframe').addEventListener('change', async (e) => {
+      state.timeframe = e.target.value;
+      localStorage.setItem('timeframe', state.timeframe);
+      await reloadAll();
+    });
+    $('refresh').addEventListener('change', (e) => {
+      state.refresh = Number(e.target.value);
+      localStorage.setItem('refresh', state.refresh);
+      startPolling();
+    });
+
+    $('alert-count').textContent = alerts.length;
+    renderAlertList();
+    reloadAll().then(startPolling);
+  </script>
+</body>
+</html>
