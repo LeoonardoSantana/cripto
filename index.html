@@ -32,10 +32,14 @@
       color: var(--text);
       min-height: 100vh;
       padding: clamp(12px, 3vw, 32px);
-      padding-top: max(clamp(12px, 3vw, 32px), env(safe-area-inset-top));
+      padding-top: calc(clamp(12px, 3vw, 32px) + env(safe-area-inset-top));
       padding-left: max(clamp(12px, 3vw, 32px), env(safe-area-inset-left));
       padding-right: max(clamp(12px, 3vw, 32px), env(safe-area-inset-right));
       padding-bottom: max(clamp(12px, 3vw, 32px), env(safe-area-inset-bottom));
+    }
+    header, main, footer {
+      transform: translate(var(--shift-x, 0), var(--shift-y, 0));
+      transition: transform 3s ease-in-out;
     }
     header {
       display: flex;
@@ -156,7 +160,7 @@
     .alert-list button { background: none; border: none; color: var(--muted); font-size: 1.2rem; cursor: pointer; }
     .notif-row { margin-top: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.8rem; color: var(--muted); }
     #toasts {
-      position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+      position: fixed; top: calc(16px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
       display: flex; flex-direction: column; gap: 8px; z-index: 10; width: min(92vw, 420px);
     }
     .toast {
@@ -680,6 +684,14 @@
     document.addEventListener('visibilitychange', keepAwake);
     document.addEventListener('pointerdown', keepAwake);
     keepAwake();
+
+    const SHIFTS = [[0, 0], [2, 0], [2, 2], [0, 2], [-2, 2], [-2, 0], [-2, -2], [0, -2], [2, -2]];
+    let shiftIdx = 0;
+    setInterval(() => {
+      const [x, y] = SHIFTS[(shiftIdx = (shiftIdx + 1) % SHIFTS.length)];
+      document.body.style.setProperty('--shift-x', `${x}px`);
+      document.body.style.setProperty('--shift-y', `${y}px`);
+    }, 2 * 60 * 1000);
 
     $('alert-count').textContent = alerts.length;
     renderAlertList();
