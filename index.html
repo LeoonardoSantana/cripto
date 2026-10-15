@@ -172,6 +172,7 @@
     .toast { position: relative; overflow: hidden; }
     .toast .secs { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
     .toast-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: #2962ff; transition: width 0.1s linear; }
+    #keep-awake { position: fixed; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0.01; pointer-events: none; }
     @keyframes slide { from { transform: translateY(-20px); opacity: 0; } }
   </style>
 </head>
@@ -232,6 +233,11 @@
   </dialog>
 
   <div id="toasts"></div>
+
+  <video id="keep-awake" muted playsinline loop disablepictureinpicture disableremoteplayback aria-hidden="true">
+    <source src="keepawake.webm" type="video/webm" />
+    <source src="keepawake.mp4" type="video/mp4" />
+  </video>
 
   <main class="grid" id="grid"></main>
 
@@ -674,8 +680,11 @@
     });
 
     let wakeLock = null;
+    const awakeVideo = $('keep-awake');
     async function keepAwake() {
-      if (wakeLock || document.visibilityState !== 'visible') return;
+      if (document.visibilityState !== 'visible') return;
+      if (awakeVideo.paused) awakeVideo.play().catch(() => {});
+      if (wakeLock) return;
       try {
         wakeLock = await navigator.wakeLock.request('screen');
         wakeLock.addEventListener('release', () => (wakeLock = null));
@@ -683,6 +692,7 @@
     }
     document.addEventListener('visibilitychange', keepAwake);
     document.addEventListener('pointerdown', keepAwake);
+    awakeVideo.addEventListener('pause', keepAwake);
     keepAwake();
 
     const SHIFTS = [[0, 0], [2, 0], [2, 2], [0, 2], [-2, 2], [-2, 0], [-2, -2], [0, -2], [2, -2]];
