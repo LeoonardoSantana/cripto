@@ -234,7 +234,7 @@
 
   <div id="toasts"></div>
 
-  <video id="keep-awake" muted playsinline loop disablepictureinpicture disableremoteplayback aria-hidden="true">
+  <video id="keep-awake" muted playsinline loop preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true">
     <source src="keepawake.webm" type="video/webm" />
     <source src="keepawake.mp4" type="video/mp4" />
   </video>
@@ -681,9 +681,10 @@
 
     let wakeLock = null;
     const awakeVideo = $('keep-awake');
+    let videoReady = false;
     async function keepAwake() {
       if (document.visibilityState !== 'visible') return;
-      if (awakeVideo.paused) awakeVideo.play().catch(() => {});
+      if (videoReady && awakeVideo.paused) awakeVideo.play().catch(() => {});
       if (wakeLock) return;
       try {
         wakeLock = await navigator.wakeLock.request('screen');
@@ -705,7 +706,10 @@
 
     $('alert-count').textContent = alerts.length;
     renderAlertList();
-    reloadAll().then(startPolling);
+    reloadAll().then(() => {
+      startPolling();
+      setTimeout(() => { videoReady = true; keepAwake(); }, 3000);
+    });
   </script>
 </body>
 </html>
