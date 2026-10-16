@@ -102,6 +102,7 @@
     .down { color: var(--down); }
     .stats { display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.8rem; color: var(--muted); }
     .stats b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .stats .ohlc-sep { width: 100%; border-top: 1px solid var(--border); margin: 0; }
     .chart { width: 100%; height: clamp(260px, 40vh, 420px); }
     footer { margin-top: 20px; font-size: 0.8rem; color: var(--muted); display: flex; align-items: center; gap: 8px; }
     .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--up); animation: pulse 1.5s infinite; }
@@ -259,6 +260,12 @@
         <span>Máx 24h: <b class="high">—</b></span>
         <span>Mín 24h: <b class="low">—</b></span>
         <span>Vol 24h: <b class="vol">—</b></span>
+        <span class="ohlc-sep"></span>
+        <span>Vela <b class="ohlc-when">—</b></span>
+        <span>O: <b class="ohlc-o">—</b></span>
+        <span>H: <b class="ohlc-h">—</b></span>
+        <span>L: <b class="ohlc-l">—</b></span>
+        <span>C: <b class="ohlc-c">—</b></span>
       </div>
       <div class="chart"></div>
     </section>
@@ -346,6 +353,31 @@
       coin.chart.timeScale().fitContent();
       coin.alertLines = [];
       drawAlertLines(coin);
+      coin.hovering = false;
+      updateOHLC(coin, coin.candles[coin.candles.length - 1]);
+    }
+
+    function candleAt(coin, t) {
+      const a = coin.candles;
+      let lo = 0, hi = a.length - 1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (a[mid].time === t) return a[mid];
+        if (a[mid].time < t) lo = mid + 1; else hi = mid - 1;
+      }
+    }
+
+    function updateOHLC(coin, candle) {
+      if (!candle) return;
+      const [when, o, h, l, c] = coin.ohlcEls;
+      when.textContent = new Date((candle.time - TZ) * 1000).toLocaleString(undefined, {
+        day: 'numeric', month: 'short',
+        ...(state.timeframe === '1d' ? { year: 'numeric' } : { hour: '2-digit', minute: '2-digit' }),
+      });
+      o.textContent = usd(candle.open);
+      h.textContent = usd(candle.high);
+      l.textContent = usd(candle.low);
+      c.textContent = usd(candle.close);
     }
 
     async function loadHistory(coin) {
@@ -372,6 +404,7 @@
         coin.candles.push(candle);
       } else return;
       coin.series.update(toPoint(candle));
+      if (!coin.hovering) updateOHLC(coin, candle);
     }
 
     function updateCard(coin, t) {
@@ -653,6 +686,7 @@
     COINS.forEach((coin) => {
       const node = $('card-tpl').content.cloneNode(true);
       coin.el = node.querySelector('.card');
+      coin.ohlcEls = ['when', 'o', 'h', 'l', 'c'].map((k) => coin.el.querySelector('.ohlc-' + k));
       const icon = node.querySelector('.coin-icon');
       icon.textContent = coin.icon;
       icon.style.background = coin.color;
@@ -660,7 +694,13 @@
       node.querySelector('small').textContent = coin.ticker;
       $('grid').appendChild(node);
       coin.chart = LightweightCharts.createChart(coin.el.querySelector('.chart'), chartOptions());
+      coin.chart.subscribeCrosshairMove((param) => {
+        coin.hovering = Boolean(param.seriesData?.size);
+        const c = coin.hovering ? candleAt(coin, param.time) : coin.candles[coin.candles.length - 1];
+        updateOHLC(coin, c);
+      });
       coin.candles = [];
+      coin.hovering = false;
     });
 
     $('style').addEventListener('change', (e) => {
@@ -693,7 +733,7 @@
     }
     document.addEventListener('visibilitychange', keepAwake);
     document.addEventListener('pointerdown', keepAwake);
-    awakeVideo.addEventListener('pause', keepAwake);
+    awakeVideo.addEventListener('pause', () => { if (videoReady) keepAwake(); });
     keepAwake();
 
     const SHIFTS = [[0, 0], [2, 0], [2, 2], [0, 2], [-2, 2], [-2, 0], [-2, -2], [0, -2], [2, -2]];
@@ -706,8 +746,7 @@
 
     $('alert-count').textContent = alerts.length;
     renderAlertList();
-    reloadAll().then(() => {
-      startPolling();
+    reloadAll().then(startPolling).finally(() => {
       setTimeout(() => { videoReady = true; keepAwake(); }, 3000);
     });
   </script>
