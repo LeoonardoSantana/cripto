@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
-  <title>Bitcoin & Ethereum · USD</title>
+  <title>Ethereum & Bitcoin · USDT</title>
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <style>
     :root {
@@ -179,7 +179,7 @@
 </head>
 <body>
   <header>
-    <h1>Bitcoin & Ethereum<span>Precio en dólares (USD) en tiempo real</span></h1>
+    <h1>Ethereum & Bitcoin<span>Precio en USDT en tiempo real</span></h1>
     <div class="controls">
       <label class="control">Estilo
         <select id="style">
@@ -221,10 +221,10 @@
     </div>
     <form class="alert-form" id="alert-form">
       <select id="alert-coin">
-        <option value="BTCUSDT">Bitcoin (BTC)</option>
         <option value="ETHUSDT">Ethereum (ETH)</option>
+        <option value="BTCUSDT">Bitcoin (BTC)</option>
       </select>
-      <input id="alert-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Precio en USD" required />
+      <input id="alert-price" type="text" inputmode="decimal" autocomplete="off" placeholder="Precio en USDT" required />
       <button class="btn primary" type="submit">Añadir</button>
       <label class="repeat"><input type="checkbox" id="alert-repeat" /> Repetir cada vez que llegue a ese precio</label>
     </form>
@@ -276,13 +276,13 @@
     const STEP = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '1d': 86400 };
     const TZ = -new Date().getTimezoneOffset() * 60;
     const COINS = [
-      { symbol: 'BTCUSDT', name: 'Bitcoin', ticker: 'BTC / USD', icon: '₿', color: '#f7931a' },
-      { symbol: 'ETHUSDT', name: 'Ethereum', ticker: 'ETH / USD', icon: 'Ξ', color: '#8c8cff' },
+      { symbol: 'ETHUSDT', name: 'Ethereum', ticker: 'ETH / USDT', icon: 'Ξ', color: '#8c8cff' },
+      { symbol: 'BTCUSDT', name: 'Bitcoin', ticker: 'BTC / USDT', icon: '₿', color: '#f7931a' },
     ];
 
     const $ = (id) => document.getElementById(id);
-    const usd = (v, d = 2) => '$' + Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
-    const compact = (v) => '$' + Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(v);
+    const usd = (v, d = 2) => Number(v).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }) + ' USDT';
+    const compact = (v) => Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 2 }).format(v) + ' USDT';
 
     const state = {
       style: localStorage.getItem('style') || 'candles',
@@ -443,7 +443,7 @@
       side: a.dir === 'above' ? -1 : a.dir === 'below' ? 1 : 0,
       ...a,
     }));
-    $('alert-coin').value = localStorage.getItem('alertCoin') || 'BTCUSDT';
+    $('alert-coin').value = localStorage.getItem('alertCoin') || 'ETHUSDT';
 
     if (hasSW) navigator.serviceWorker.register('sw.js').catch(() => {});
 

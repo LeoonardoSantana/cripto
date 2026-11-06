@@ -1,7 +1,7 @@
 {
-  "name": "Bitcoin & Ethereum · USD",
+  "name": "Ethereum & Bitcoin · USDT",
   "short_name": "Cripto",
-  "description": "Precio de Bitcoin y Ethereum en dólares en tiempo real",
+  "description": "Precio de Ethereum y Bitcoin en USDT en tiempo real",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
